@@ -249,6 +249,42 @@
         let teams = {};
         let allMembers = [];
         
+        // Funções de persistência com localStorage
+        function saveToLocalStorage() {
+            try {
+                const data = {
+                    teams: teams,
+                    allMembers: allMembers,
+                    timestamp: new Date().toISOString()
+                };
+                localStorage.setItem('teamManagementData', JSON.stringify(data));
+                console.log('Dados salvos com sucesso no localStorage');
+            } catch (error) {
+                console.error('Erro ao salvar dados no localStorage:', error);
+            }
+        }
+        
+        function loadFromLocalStorage() {
+            try {
+                const savedData = localStorage.getItem('teamManagementData');
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    teams = data.teams || {};
+                    allMembers = data.allMembers || [];
+                    console.log('Dados carregados do localStorage:', data.timestamp);
+                    return true;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados do localStorage:', error);
+            }
+            return false;
+        }
+        
+        function clearLocalStorage() {
+            localStorage.removeItem('teamManagementData');
+            console.log('Dados removidos do localStorage');
+        }
+        
         // Função para obter label do status
         function getStatusLabel(status) {
             const labels = {
@@ -273,6 +309,11 @@
         
         // Gerar dados iniciais
         function generateInitialData() {
+            // Se já existem dados salvos, não gerar novamente
+            if (Object.keys(teams).length > 0 && allMembers.length > 0) {
+                console.log('Dados já existem, pulando geração inicial');
+                return;
+            }
             const groups = ['A', 'B', 'C', 'D', 'E'];
             const firstNames = ['Ana', 'João', 'Maria', 'Pedro', 'Carla', 'Lucas', 'Fernanda', 'Rafael', 'Juliana', 'Bruno', 'Camila', 'Diego', 'Larissa', 'Thiago', 'Beatriz', 'Gabriel', 'Mariana', 'Felipe', 'Amanda', 'Rodrigo'];
             const lastNames = ['Silva', 'Santos', 'Oliveira', 'Souza', 'Lima', 'Ferreira', 'Costa', 'Pereira', 'Rodrigues', 'Almeida', 'Nascimento', 'Carvalho', 'Gomes', 'Martins', 'Rocha', 'Ribeiro', 'Barbosa', 'Dias', 'Monteiro', 'Cardoso'];
@@ -467,6 +508,9 @@
             member.teamId = targetTeamId;
             targetTeam.members.push(member);
             
+            // Salvar no localStorage
+            saveToLocalStorage();
+            
             // Re-renderizar
             const currentFilter = document.getElementById('groupFilter').value;
             renderTeams(currentFilter);
@@ -482,6 +526,9 @@
             if (memberIndex > -1) {
                 allMembers.splice(memberIndex, 1);
             }
+            
+            // Salvar no localStorage
+            saveToLocalStorage();
             
             // Re-renderizar
             const currentFilter = document.getElementById('groupFilter').value;
@@ -808,6 +855,9 @@
                 }
             }
             
+            // Salvar no localStorage
+            saveToLocalStorage();
+            
             return true;
         }
         
@@ -826,6 +876,9 @@
             if (index > -1) {
                 allMembers.splice(index, 1);
             }
+            
+            // Salvar no localStorage
+            saveToLocalStorage();
             
             // Atualizar visualizações
             if (currentView === 'members') {
@@ -859,6 +912,11 @@
                     }
                 }
             });
+            
+            // Salvar no localStorage se houve alterações
+            if (removedMembers.length > 0) {
+                saveToLocalStorage();
+            }
             
             // Re-renderizar as equipes
             const currentFilter = document.getElementById('groupFilter').value;
@@ -1499,6 +1557,9 @@
             member.teamId = selectedTargetTeam.id;
             team.members.push(member);
             
+            // Salvar no localStorage
+            saveToLocalStorage();
+            
             // Mostrar sucesso
             showNotification(`${member.name} foi adicionado à Equipe ${team.id} com sucesso!`, 'success');
             
@@ -1565,7 +1626,16 @@
         
         // Event listeners
         document.addEventListener('DOMContentLoaded', () => {
-            generateInitialData();
+            // Tentar carregar dados do localStorage primeiro
+            const hasData = loadFromLocalStorage();
+            
+            // Se não houver dados salvos, gerar dados iniciais
+            if (!hasData) {
+                generateInitialData();
+                // Salvar os dados iniciais gerados
+                saveToLocalStorage();
+            }
+            
             renderTeams();
             setupDragAndDrop();
             
