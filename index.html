@@ -1,0 +1,1690 @@
+<!doctype html>
+<html lang="pt-BR">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestão de Equipes</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+        body {
+            box-sizing: border-box;
+        }
+        
+        .dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+        
+        .drop-zone {
+            transition: all 0.2s ease;
+        }
+        
+        .drop-zone.drag-over {
+            background-color: #dbeafe;
+            border-color: #3b82f6;
+            transform: scale(1.02);
+        }
+        
+        .member-card {
+            transition: all 0.2s ease;
+            cursor: grab;
+        }
+        
+        .member-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .member-card:active {
+            cursor: grabbing;
+        }
+        
+        .group-header {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+        }
+        
+        /* Cores específicas para cada grupo */
+        .group-A .group-header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        }
+        .group-A .team-card {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        }
+        
+        .group-B .group-header {
+            background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+        }
+        .group-B .team-card {
+            background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+        }
+        
+        .group-C .group-header {
+            background: linear-gradient(135deg, #7c2d12 0%, #ea580c 100%);
+        }
+        .group-C .team-card {
+            background: linear-gradient(135deg, #c2410c 0%, #9a3412 100%);
+        }
+        
+        .group-D .group-header {
+            background: linear-gradient(135deg, #581c87 0%, #a855f7 100%);
+        }
+        .group-D .team-card {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+        
+        .group-E .group-header {
+            background: linear-gradient(135deg, #be185d 0%, #ec4899 100%);
+        }
+        .group-E .team-card {
+            background: linear-gradient(135deg, #db2777 0%, #be185d 100%);
+        }
+        
+        .empty-slot {
+            border: 2px dashed #cbd5e1;
+            background-color: #f8fafc;
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+    </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="bg-gray-100 min-h-full font-sans">
+  <header class="bg-white shadow-sm border-b">
+   <div class="max-w-7xl mx-auto px-4 py-4">
+    <div class="flex justify-between items-center">
+     <div>
+      <h1 class="text-3xl font-bold text-gray-900">Sistema de Gestão de Equipes</h1>
+      <p class="text-gray-600 mt-1">Gerencie 100 equipes organizadas em 5 grupos</p>
+     </div>
+     <nav class="flex space-x-4"><button id="teamsViewBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"> Visualizar Equipes </button> <button id="membersViewBtn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"> Gerenciar Colaboradores </button> <button id="updateTeamsBtn" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-2">
+       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+       </svg><span>Atualizar Equipes</span> </button> <button id="exportExcelBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2">
+       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+       </svg><span>Exportar Excel</span> </button> <button id="exportTxtBtn" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2">
+       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+       </svg><span>Gerar TXT</span> </button>
+     </nav>
+    </div>
+   </div>
+  </header>
+  <main class="max-w-7xl mx-auto px-4 py-6"><!-- Visualização de Equipes -->
+   <div id="teamsView"><!-- Estatísticas -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+     <div class="stats-card text-white p-4 rounded-lg">
+      <h3 class="text-sm font-medium opacity-90">Total de Equipes</h3>
+      <p class="text-2xl font-bold" id="totalTeams">100</p>
+     </div>
+     <div class="bg-blue-600 text-white p-4 rounded-lg">
+      <h3 class="text-sm font-medium opacity-90">Equipes Completas</h3>
+      <p class="text-2xl font-bold" id="completeTeams">100</p>
+     </div>
+     <div class="bg-blue-700 text-white p-4 rounded-lg">
+      <h3 class="text-sm font-medium opacity-90">Colaboradores Ativos</h3>
+      <p class="text-2xl font-bold" id="activeMembers">200</p>
+     </div>
+     <div class="bg-blue-800 text-white p-4 rounded-lg">
+      <h3 class="text-sm font-medium opacity-90">Grupos</h3>
+      <p class="text-2xl font-bold">5</p>
+     </div>
+    </div><!-- Filtros -->
+    <div class="bg-white p-4 rounded-lg shadow-sm mb-6">
+     <div class="flex flex-wrap gap-4 items-center"><label for="groupFilter" class="text-sm font-medium text-gray-700">Filtrar por Grupo:</label> <select id="groupFilter" class="border border-gray-300 rounded-md px-3 py-2 text-sm"> <option value="">Todos os Grupos</option> <option value="A">Grupo A</option> <option value="B">Grupo B</option> <option value="C">Grupo C</option> <option value="D">Grupo D</option> <option value="E">Grupo E</option> </select> <label for="searchMember" class="text-sm font-medium text-gray-700 ml-4">Buscar Colaborador:</label> <input type="text" id="searchMember" placeholder="Nome ou matrícula..." class="border border-gray-300 rounded-md px-3 py-2 text-sm w-64">
+     </div>
+    </div><!-- Barra de Pesquisa para Adicionar Colaboradores -->
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6">
+     <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center space-x-2">
+       <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+       </svg>
+       <h3 class="text-lg font-semibold text-blue-900">Adicionar Colaborador à Equipe</h3>
+      </div><button id="toggleAddMember" class="text-blue-600 hover:text-blue-800 text-sm font-medium"> Ocultar </button>
+     </div>
+     <div id="addMemberSection">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+       <div><label for="collaboratorSearch" class="block text-sm font-medium text-blue-700 mb-1"> Buscar Colaborador Disponível </label>
+        <div class="relative"><input type="text" id="collaboratorSearch" placeholder="Digite nome ou matrícula..." class="w-full border border-blue-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+         <svg class="absolute right-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+         </svg>
+        </div>
+       </div>
+       <div><label for="targetTeam" class="block text-sm font-medium text-blue-700 mb-1"> Equipe de Destino </label> <select id="targetTeam" class="w-full border border-blue-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"> <option value="">Selecione uma equipe...</option> </select>
+       </div>
+       <div><button id="addToTeamBtn" disabled class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"> Adicionar à Equipe </button>
+       </div>
+      </div><!-- Resultados da Pesquisa -->
+      <div id="searchResults" class="mt-4 hidden">
+       <h4 class="text-sm font-medium text-blue-700 mb-2">Colaboradores Encontrados:</h4>
+       <div id="searchResultsList" class="space-y-2 max-h-40 overflow-y-auto"><!-- Resultados aparecerão aqui -->
+       </div>
+      </div><!-- Informações da Equipe Selecionada -->
+      <div id="teamInfo" class="mt-4 hidden">
+       <h4 class="text-sm font-medium text-blue-700 mb-2">Informações da Equipe:</h4>
+       <div id="teamInfoContent" class="bg-white rounded-md p-3 border border-blue-200"><!-- Informações da equipe aparecerão aqui -->
+       </div>
+      </div>
+     </div>
+    </div><!-- Grupos de Equipes -->
+    <div id="teamsContainer" class="space-y-8"><!-- Os grupos serão gerados dinamicamente -->
+    </div>
+   </div><!-- Visualização de Colaboradores -->
+   <div id="membersView" class="hidden">
+    <div class="bg-white rounded-lg shadow-sm">
+     <div class="p-6 border-b border-gray-200">
+      <div class="flex justify-between items-center">
+       <div>
+        <h2 class="text-2xl font-bold text-gray-900">Gerenciar Colaboradores</h2>
+        <p class="text-gray-600 mt-1">Adicione, edite ou remova colaboradores do sistema</p>
+       </div><button id="addMemberBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"> + Adicionar Colaborador </button>
+      </div>
+     </div><!-- Sub-abas de Status -->
+     <div class="border-b border-gray-200">
+      <nav class="flex space-x-8 px-6" aria-label="Tabs"><button id="availableTab" class="member-tab py-4 px-1 border-b-2 border-green-500 font-medium text-sm text-green-600 whitespace-nowrap">
+        <div class="flex items-center space-x-2">
+         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+         </svg><span>Disponíveis</span> <span id="availableCount" class="bg-green-100 text-green-800 py-1 px-2 rounded-full text-xs font-medium">0</span>
+        </div></button> <button id="unavailableTab" class="member-tab py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
+        <div class="flex items-center space-x-2">
+         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+         </svg><span>Indisponíveis</span> <span id="unavailableCount" class="bg-red-100 text-red-800 py-1 px-2 rounded-full text-xs font-medium">0</span>
+        </div></button> <button id="allMembersTab" class="member-tab py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
+        <div class="flex items-center space-x-2">
+         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+         </svg><span>Todos</span> <span id="allCount" class="bg-blue-100 text-blue-800 py-1 px-2 rounded-full text-xs font-medium">0</span>
+        </div></button>
+      </nav>
+     </div><!-- Filtros e Busca -->
+     <div class="p-4 border-b border-gray-200 bg-gray-50">
+      <div class="flex flex-wrap gap-4 items-center"><label for="memberSearch" class="text-sm font-medium text-gray-700">Buscar:</label> <input type="text" id="memberSearch" placeholder="Nome ou matrícula..." class="border border-gray-300 rounded-md px-3 py-2 text-sm w-64"> <label for="teamFilter" class="text-sm font-medium text-gray-700 ml-4">Filtrar por Equipe:</label> <select id="teamFilter" class="border border-gray-300 rounded-md px-3 py-2 text-sm"> <option value="">Todas as Equipes</option> <option value="unassigned">Sem Equipe</option> </select> <!-- Informação sobre a aba atual -->
+       <div id="tabInfo" class="ml-auto text-sm text-gray-600 bg-white px-3 py-2 rounded-md border"><span class="font-medium">💡 Dica:</span> <span id="tabDescription">Apenas colaboradores disponíveis podem ser alocados em equipes</span>
+       </div>
+      </div>
+     </div><!-- Lista de Colaboradores -->
+     <div class="overflow-x-auto">
+      <table class="w-full">
+       <thead class="bg-gray-50">
+        <tr>
+         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matrícula</th>
+         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Equipe</th>
+         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+        </tr>
+       </thead>
+       <tbody id="membersTableBody" class="bg-white divide-y divide-gray-200"><!-- Colaboradores serão inseridos aqui -->
+       </tbody>
+      </table>
+     </div>
+    </div>
+   </div>
+  </main><!-- Modal para Adicionar/Editar Colaborador -->
+  <div id="memberModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+   <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+    <div class="flex justify-between items-center mb-4">
+     <h3 id="modalTitle" class="text-lg font-bold text-gray-900">Adicionar Colaborador</h3><button id="closeModal" class="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
+    </div>
+    <form id="memberForm">
+     <div class="space-y-4">
+      <div><label for="memberName" class="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label> <input type="text" id="memberName" required class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div><label for="memberRegistration" class="block text-sm font-medium text-gray-700 mb-1">Matrícula</label> <input type="text" id="memberRegistration" required class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div><label for="memberStatus" class="block text-sm font-medium text-gray-700 mb-1">Status</label> <select id="memberStatus" required class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"> <option value="disponivel">Disponível</option> <option value="licenca">Em Licença</option> <option value="ferias">Em Férias</option> <option value="afastado">Afastado</option> </select>
+      </div>
+      <div><label for="memberTeam" class="block text-sm font-medium text-gray-700 mb-1">Equipe (Opcional)</label> <select id="memberTeam" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"> <option value="">Sem equipe</option> </select>
+       <p id="teamWarning" class="text-xs text-amber-600 mt-1 hidden">⚠️ Colaboradores indisponíveis não podem ser alocados em equipes</p>
+      </div>
+     </div>
+     <div class="flex justify-end space-x-3 mt-6"><button type="button" id="cancelBtn" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"> Cancelar </button> <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"> Salvar </button>
+     </div>
+    </form>
+   </div>
+  </div>
+  <script>
+        // Dados das equipes e colaboradores
+        let teams = {};
+        let allMembers = [];
+        
+        // Função para obter label do status
+        function getStatusLabel(status) {
+            const labels = {
+                'disponivel': 'Disponível',
+                'licenca': 'Em Licença',
+                'ferias': 'Em Férias',
+                'afastado': 'Afastado'
+            };
+            return labels[status] || status;
+        }
+        
+        // Função para obter cor do status
+        function getStatusColor(status) {
+            const colors = {
+                'disponivel': 'bg-green-100 text-green-800',
+                'licenca': 'bg-red-100 text-red-800',
+                'ferias': 'bg-yellow-100 text-yellow-800',
+                'afastado': 'bg-gray-100 text-gray-800'
+            };
+            return colors[status] || 'bg-gray-100 text-gray-800';
+        }
+        
+        // Gerar dados iniciais
+        function generateInitialData() {
+            const groups = ['A', 'B', 'C', 'D', 'E'];
+            const firstNames = ['Ana', 'João', 'Maria', 'Pedro', 'Carla', 'Lucas', 'Fernanda', 'Rafael', 'Juliana', 'Bruno', 'Camila', 'Diego', 'Larissa', 'Thiago', 'Beatriz', 'Gabriel', 'Mariana', 'Felipe', 'Amanda', 'Rodrigo'];
+            const lastNames = ['Silva', 'Santos', 'Oliveira', 'Souza', 'Lima', 'Ferreira', 'Costa', 'Pereira', 'Rodrigues', 'Almeida', 'Nascimento', 'Carvalho', 'Gomes', 'Martins', 'Rocha', 'Ribeiro', 'Barbosa', 'Dias', 'Monteiro', 'Cardoso'];
+            
+            let memberCounter = 1001;
+            
+            groups.forEach(group => {
+                for (let i = 1; i <= 20; i++) {
+                    const teamId = `${group}${i.toString().padStart(2, '0')}`;
+                    teams[teamId] = {
+                        id: teamId,
+                        group: group,
+                        members: []
+                    };
+                    
+                    // Adicionar 2 colaboradores por equipe
+                    for (let j = 0; j < 2; j++) {
+                        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+                        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+                        const member = {
+                            id: `member_${memberCounter}`,
+                            name: `${firstName} ${lastName}`,
+                            registration: memberCounter.toString(),
+                            teamId: teamId,
+                            status: 'disponivel'
+                        };
+                        
+                        teams[teamId].members.push(member);
+                        allMembers.push(member);
+                        memberCounter++;
+                    }
+                }
+            });
+        }
+        
+        // Renderizar equipes
+        function renderTeams(filterGroup = '') {
+            const container = document.getElementById('teamsContainer');
+            container.innerHTML = '';
+            
+            const groups = ['A', 'B', 'C', 'D', 'E'];
+            const filteredGroups = filterGroup ? [filterGroup] : groups;
+            
+            filteredGroups.forEach(group => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = `group-section group-${group}`;
+                
+                const groupTeams = Object.values(teams).filter(team => team.group === group);
+                
+                groupDiv.innerHTML = `
+                    <div class="group-header text-white p-4 rounded-t-lg">
+                        <h2 class="text-xl font-bold">Grupo ${group}</h2>
+                        <p class="text-sm opacity-90">${groupTeams.length} equipes</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-b-lg shadow-sm">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4" id="group-${group}">
+                            ${groupTeams.map(team => renderTeamCard(team)).join('')}
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(groupDiv);
+            });
+            
+            updateStats();
+        }
+        
+        // Renderizar card da equipe
+        function renderTeamCard(team) {
+            return `
+                <div class="team-card text-white p-4 rounded-lg drop-zone" data-team-id="${team.id}">
+                    <h3 class="font-bold text-lg mb-3">Equipe ${team.id}</h3>
+                    <div class="space-y-2">
+                        ${team.members.map((member, index) => `
+                            <div class="member-card bg-white bg-opacity-20 p-3 rounded-md" 
+                                 draggable="true" 
+                                 data-member-id="${member.id}"
+                                 data-team-id="${team.id}">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-medium text-sm truncate">${member.name}</p>
+                                        <p class="text-xs opacity-75">Mat: ${member.registration}</p>
+                                        ${member.status !== 'disponivel' ? `<p class="text-xs text-yellow-200">⚠️ ${getStatusLabel(member.status)}</p>` : ''}
+                                    </div>
+                                    <button class="remove-member ml-2 text-white hover:text-red-200 text-lg font-bold" 
+                                            data-member-id="${member.id}" 
+                                            data-team-id="${team.id}">×</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                        ${team.members.length < 2 ? `
+                            <div class="empty-slot p-3 rounded-md text-center text-gray-400 text-sm">
+                                Vaga disponível
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Atualizar estatísticas
+        function updateStats() {
+            const totalTeams = Object.keys(teams).length;
+            const completeTeams = Object.values(teams).filter(team => team.members.length === 2).length;
+            const activeMembers = allMembers.length;
+            
+            document.getElementById('totalTeams').textContent = totalTeams;
+            document.getElementById('completeTeams').textContent = completeTeams;
+            document.getElementById('activeMembers').textContent = activeMembers;
+        }
+        
+        // Configurar drag and drop
+        function setupDragAndDrop() {
+            document.addEventListener('dragstart', (e) => {
+                if (e.target.classList.contains('member-card')) {
+                    const memberId = e.target.dataset.memberId;
+                    const member = allMembers.find(m => m.id === memberId);
+                    
+                    // Bloquear drag se o colaborador não estiver disponível
+                    if (member && member.status !== 'disponivel') {
+                        e.preventDefault();
+                        showNotification('Colaboradores indisponíveis não podem ser movidos entre equipes', 'error');
+                        return;
+                    }
+                    
+                    e.target.classList.add('dragging');
+                    e.dataTransfer.setData('text/plain', e.target.dataset.memberId);
+                    e.dataTransfer.setData('source-team', e.target.dataset.teamId);
+                }
+            });
+            
+            document.addEventListener('dragend', (e) => {
+                if (e.target.classList.contains('member-card')) {
+                    e.target.classList.remove('dragging');
+                }
+            });
+            
+            document.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (e.target.closest('.drop-zone')) {
+                    e.target.closest('.drop-zone').classList.add('drag-over');
+                }
+            });
+            
+            document.addEventListener('dragleave', (e) => {
+                if (e.target.closest('.drop-zone')) {
+                    e.target.closest('.drop-zone').classList.remove('drag-over');
+                }
+            });
+            
+            document.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const dropZone = e.target.closest('.drop-zone');
+                if (dropZone) {
+                    dropZone.classList.remove('drag-over');
+                    
+                    const memberId = e.dataTransfer.getData('text/plain');
+                    const sourceTeamId = e.dataTransfer.getData('source-team');
+                    const targetTeamId = dropZone.dataset.teamId;
+                    
+                    if (sourceTeamId !== targetTeamId) {
+                        moveMember(memberId, sourceTeamId, targetTeamId);
+                    }
+                }
+            });
+        }
+        
+        // Mover colaborador entre equipes
+        function moveMember(memberId, sourceTeamId, targetTeamId) {
+            const member = allMembers.find(m => m.id === memberId);
+            if (!member) return;
+            
+            const sourceTeam = teams[sourceTeamId];
+            const targetTeam = teams[targetTeamId];
+            
+            // Se a equipe de destino já tem 2 membros, trocar posições
+            if (targetTeam.members.length === 2) {
+                const displacedMember = targetTeam.members[0];
+                
+                // Remover membro deslocado da equipe de destino
+                targetTeam.members = targetTeam.members.filter(m => m.id !== displacedMember.id);
+                
+                // Adicionar membro deslocado à equipe de origem
+                displacedMember.teamId = sourceTeamId;
+                sourceTeam.members.push(displacedMember);
+            }
+            
+            // Remover membro da equipe de origem
+            sourceTeam.members = sourceTeam.members.filter(m => m.id !== memberId);
+            
+            // Adicionar membro à equipe de destino
+            member.teamId = targetTeamId;
+            targetTeam.members.push(member);
+            
+            // Re-renderizar
+            const currentFilter = document.getElementById('groupFilter').value;
+            renderTeams(currentFilter);
+        }
+        
+        // Remover colaborador
+        function removeMember(memberId, teamId) {
+            const team = teams[teamId];
+            team.members = team.members.filter(m => m.id !== memberId);
+            
+            // Remover da lista geral
+            const memberIndex = allMembers.findIndex(m => m.id === memberId);
+            if (memberIndex > -1) {
+                allMembers.splice(memberIndex, 1);
+            }
+            
+            // Re-renderizar
+            const currentFilter = document.getElementById('groupFilter').value;
+            renderTeams(currentFilter);
+        }
+        
+        // Buscar colaborador
+        function searchMember(query) {
+            if (!query) {
+                // Mostrar todos
+                document.querySelectorAll('.member-card').forEach(card => {
+                    card.style.display = 'block';
+                });
+                return;
+            }
+            
+            const searchTerm = query.toLowerCase();
+            document.querySelectorAll('.member-card').forEach(card => {
+                const memberName = card.querySelector('p').textContent.toLowerCase();
+                const memberReg = card.querySelector('.text-xs').textContent.toLowerCase();
+                
+                if (memberName.includes(searchTerm) || memberReg.includes(searchTerm)) {
+                    card.style.display = 'block';
+                    card.style.backgroundColor = 'rgba(59, 130, 246, 0.3)';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+        
+        // Variáveis globais para o modal
+        let currentEditingMember = null;
+        let currentView = 'teams';
+        let currentMemberTab = 'available'; // 'available', 'unavailable', 'all'
+
+        
+        // Alternar entre visualizações
+        function switchView(view) {
+            currentView = view;
+            const teamsView = document.getElementById('teamsView');
+            const membersView = document.getElementById('membersView');
+            const teamsBtn = document.getElementById('teamsViewBtn');
+            const membersBtn = document.getElementById('membersViewBtn');
+            
+            if (view === 'teams') {
+                teamsView.classList.remove('hidden');
+                membersView.classList.add('hidden');
+                teamsBtn.classList.remove('bg-gray-600');
+                teamsBtn.classList.add('bg-blue-600');
+                membersBtn.classList.remove('bg-blue-600');
+                membersBtn.classList.add('bg-gray-600');
+            } else {
+                teamsView.classList.add('hidden');
+                membersView.classList.remove('hidden');
+                teamsBtn.classList.remove('bg-blue-600');
+                teamsBtn.classList.add('bg-gray-600');
+                membersBtn.classList.remove('bg-gray-600');
+                membersBtn.classList.add('bg-blue-600');
+                switchMemberTab('available'); // Iniciar na aba de disponíveis
+                populateTeamOptions();
+            }
+        }
+        
+        // Renderizar tabela de colaboradores
+        function renderMembersTable(searchTerm = '', teamFilter = '') {
+            const tbody = document.getElementById('membersTableBody');
+            let filteredMembers = [...allMembers];
+            
+            // Filtrar por aba ativa
+            if (currentMemberTab === 'available') {
+                filteredMembers = filteredMembers.filter(member => member.status === 'disponivel');
+            } else if (currentMemberTab === 'unavailable') {
+                filteredMembers = filteredMembers.filter(member => member.status !== 'disponivel');
+            }
+            // Se for 'all', não filtra por status
+            
+            // Aplicar filtros de busca
+            if (searchTerm) {
+                const term = searchTerm.toLowerCase();
+                filteredMembers = filteredMembers.filter(member => 
+                    member.name.toLowerCase().includes(term) || 
+                    member.registration.includes(term)
+                );
+            }
+            
+            if (teamFilter) {
+                if (teamFilter === 'unassigned') {
+                    filteredMembers = filteredMembers.filter(member => !member.teamId);
+                } else {
+                    filteredMembers = filteredMembers.filter(member => member.teamId === teamFilter);
+                }
+            }
+            
+            // Ordenar por nome
+            filteredMembers.sort((a, b) => a.name.localeCompare(b.name));
+            
+            tbody.innerHTML = filteredMembers.map(member => `
+                <tr class="hover:bg-gray-50 ${member.status === 'disponivel' ? 'bg-green-50' : 'bg-red-50'}">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <div class="flex items-center">
+                            ${member.status === 'disponivel' ? 
+                                '<svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>' : 
+                                '<svg class="w-4 h-4 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>'
+                            }
+                            ${member.name}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${member.registration}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(member.status)}">
+                            ${getStatusLabel(member.status)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${member.teamId ? `Equipe ${member.teamId}` : '<span class="text-gray-400">Sem equipe</span>'}
+                        ${member.status !== 'disponivel' && member.teamId ? '<br><span class="text-xs text-red-600">⚠️ Será removido na próxima atualização</span>' : ''}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                        <button class="edit-member text-blue-600 hover:text-blue-900" data-member-id="${member.id}">
+                            Editar
+                        </button>
+                        <button class="delete-member text-red-600 hover:text-red-900" data-member-id="${member.id}">
+                            Excluir
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            
+            // Atualizar contadores das abas
+            updateMemberTabCounts();
+        }
+        
+        // Atualizar contadores das abas de colaboradores
+        function updateMemberTabCounts() {
+            const availableMembers = allMembers.filter(member => member.status === 'disponivel');
+            const unavailableMembers = allMembers.filter(member => member.status !== 'disponivel');
+            
+            document.getElementById('availableCount').textContent = availableMembers.length;
+            document.getElementById('unavailableCount').textContent = unavailableMembers.length;
+            document.getElementById('allCount').textContent = allMembers.length;
+        }
+        
+        // Alternar entre abas de colaboradores
+        function switchMemberTab(tab) {
+            currentMemberTab = tab;
+            
+            // Atualizar aparência das abas
+            document.querySelectorAll('.member-tab').forEach(tabBtn => {
+                tabBtn.classList.remove('border-green-500', 'text-green-600', 'border-red-500', 'text-red-600', 'border-blue-500', 'text-blue-600');
+                tabBtn.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            // Ativar aba selecionada
+            const activeTab = document.getElementById(`${tab}Tab`);
+            activeTab.classList.remove('border-transparent', 'text-gray-500');
+            
+            if (tab === 'available') {
+                activeTab.classList.add('border-green-500', 'text-green-600');
+            } else if (tab === 'unavailable') {
+                activeTab.classList.add('border-red-500', 'text-red-600');
+            } else {
+                activeTab.classList.add('border-blue-500', 'text-blue-600');
+            }
+            
+            // Atualizar descrição da aba
+            const descriptions = {
+                'available': 'Apenas colaboradores disponíveis podem ser alocados em equipes',
+                'unavailable': 'Colaboradores indisponíveis são automaticamente removidos das equipes',
+                'all': 'Visualização completa de todos os colaboradores do sistema'
+            };
+            
+            document.getElementById('tabDescription').textContent = descriptions[tab];
+            
+            // Re-renderizar tabela
+            const searchTerm = document.getElementById('memberSearch').value;
+            const teamFilter = document.getElementById('teamFilter').value;
+            renderMembersTable(searchTerm, teamFilter);
+        }
+        
+        // Popular opções de equipes no modal
+        function populateTeamOptions() {
+            const select = document.getElementById('memberTeam');
+            const teamFilter = document.getElementById('teamFilter');
+            const statusSelect = document.getElementById('memberStatus');
+            
+            // Limpar opções existentes (exceto a primeira)
+            select.innerHTML = '<option value="">Sem equipe</option>';
+            teamFilter.innerHTML = '<option value="">Todas as Equipes</option><option value="unassigned">Sem Equipe</option>';
+            
+            // Só adicionar opções de equipe se o status for "disponivel"
+            if (statusSelect.value === 'disponivel') {
+                Object.values(teams).forEach(team => {
+                    if (team.members.length < 2) {
+                        select.innerHTML += `<option value="${team.id}">Equipe ${team.id} (${2 - team.members.length} vaga${team.members.length === 1 ? '' : 's'})</option>`;
+                    }
+                    teamFilter.innerHTML += `<option value="${team.id}">Equipe ${team.id}</option>`;
+                });
+            }
+            
+            // Adicionar todas as equipes no filtro (independente do status)
+            Object.values(teams).forEach(team => {
+                teamFilter.innerHTML += `<option value="${team.id}">Equipe ${team.id}</option>`;
+            });
+        }
+        
+        // Abrir modal
+        function openModal(member = null) {
+            currentEditingMember = member;
+            const modal = document.getElementById('memberModal');
+            const title = document.getElementById('modalTitle');
+            const nameInput = document.getElementById('memberName');
+            const regInput = document.getElementById('memberRegistration');
+            const teamSelect = document.getElementById('memberTeam');
+            
+            const statusSelect = document.getElementById('memberStatus');
+            const teamWarning = document.getElementById('teamWarning');
+            
+            if (member) {
+                title.textContent = 'Editar Colaborador';
+                nameInput.value = member.name;
+                regInput.value = member.registration;
+                statusSelect.value = member.status || 'disponivel';
+                teamSelect.value = member.teamId || '';
+                regInput.disabled = true; // Não permitir alterar matrícula
+            } else {
+                title.textContent = 'Adicionar Colaborador';
+                nameInput.value = '';
+                regInput.value = '';
+                statusSelect.value = 'disponivel';
+                teamSelect.value = '';
+                regInput.disabled = false;
+            }
+            
+            // Controlar visibilidade do campo equipe baseado no status
+            function updateTeamAvailability() {
+                const isAvailable = statusSelect.value === 'disponivel';
+                teamSelect.disabled = !isAvailable;
+                
+                if (!isAvailable) {
+                    teamSelect.value = '';
+                    teamWarning.classList.remove('hidden');
+                } else {
+                    teamWarning.classList.add('hidden');
+                }
+                
+                // Recarregar opções de equipe baseado no status
+                populateTeamOptions();
+            }
+            
+            updateTeamAvailability();
+            statusSelect.addEventListener('change', updateTeamAvailability);
+            
+            populateTeamOptions();
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            nameInput.focus();
+        }
+        
+        // Fechar modal
+        function closeModal() {
+            const modal = document.getElementById('memberModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            currentEditingMember = null;
+        }
+        
+        // Salvar colaborador
+        function saveMember(formData) {
+            const name = document.getElementById('memberName').value.trim();
+            const registration = document.getElementById('memberRegistration').value.trim();
+            const status = document.getElementById('memberStatus').value;
+            const teamId = document.getElementById('memberTeam').value || null;
+            
+            // Validações
+            if (!name || !registration || !status) {
+                return false;
+            }
+            
+            // Verificar se matrícula já existe (apenas para novos colaboradores)
+            if (!currentEditingMember && allMembers.some(m => m.registration === registration)) {
+                return false;
+            }
+            
+            // Não permitir alocação em equipe se não estiver disponível
+            if (status !== 'disponivel' && teamId) {
+                showNotification('Colaboradores indisponíveis não podem ser alocados em equipes', 'error');
+                return false;
+            }
+            
+            if (currentEditingMember) {
+                // Editar colaborador existente
+                const member = allMembers.find(m => m.id === currentEditingMember.id);
+                const oldTeamId = member.teamId;
+                
+                // Remover da equipe antiga
+                if (oldTeamId && teams[oldTeamId]) {
+                    teams[oldTeamId].members = teams[oldTeamId].members.filter(m => m.id !== member.id);
+                }
+                
+                // Atualizar dados
+                member.name = name;
+                member.status = status;
+                member.teamId = status === 'disponivel' ? teamId : null;
+                
+                // Adicionar à nova equipe (apenas se disponível)
+                if (teamId && status === 'disponivel' && teams[teamId] && teams[teamId].members.length < 2) {
+                    teams[teamId].members.push(member);
+                }
+            } else {
+                // Adicionar novo colaborador
+                const newMember = {
+                    id: `member_${Date.now()}`,
+                    name: name,
+                    registration: registration,
+                    status: status,
+                    teamId: status === 'disponivel' ? teamId : null
+                };
+                
+                allMembers.push(newMember);
+                
+                // Adicionar à equipe se especificada e disponível
+                if (teamId && status === 'disponivel' && teams[teamId] && teams[teamId].members.length < 2) {
+                    teams[teamId].members.push(newMember);
+                }
+            }
+            
+            return true;
+        }
+        
+        // Excluir colaborador
+        function deleteMember(memberId) {
+            const member = allMembers.find(m => m.id === memberId);
+            if (!member) return;
+            
+            // Remover da equipe
+            if (member.teamId && teams[member.teamId]) {
+                teams[member.teamId].members = teams[member.teamId].members.filter(m => m.id !== memberId);
+            }
+            
+            // Remover da lista geral
+            const index = allMembers.findIndex(m => m.id === memberId);
+            if (index > -1) {
+                allMembers.splice(index, 1);
+            }
+            
+            // Atualizar visualizações
+            if (currentView === 'members') {
+                renderMembersTable();
+            } else {
+                const currentFilter = document.getElementById('groupFilter').value;
+                renderTeams(currentFilter);
+            }
+        }
+        
+        // Atualizar equipes baseado no status dos colaboradores
+        function updateTeamsBasedOnStatus() {
+            let removedMembers = [];
+            let updatedTeams = 0;
+            
+            // Percorrer todos os colaboradores
+            allMembers.forEach(member => {
+                // Se o colaborador não está disponível mas está em uma equipe
+                if (member.status !== 'disponivel' && member.teamId) {
+                    const team = teams[member.teamId];
+                    if (team) {
+                        // Remover da equipe
+                        team.members = team.members.filter(m => m.id !== member.id);
+                        member.teamId = null;
+                        removedMembers.push({
+                            name: member.name,
+                            status: getStatusLabel(member.status),
+                            teamId: team.id
+                        });
+                        updatedTeams++;
+                    }
+                }
+            });
+            
+            // Re-renderizar as equipes
+            const currentFilter = document.getElementById('groupFilter').value;
+            renderTeams(currentFilter);
+            
+            // Mostrar resultado da atualização
+            if (removedMembers.length > 0) {
+                let message = `Atualização concluída! ${removedMembers.length} colaborador${removedMembers.length > 1 ? 'es foram removidos' : ' foi removido'} das equipes:\n\n`;
+                removedMembers.forEach(member => {
+                    message += `• ${member.name} (${member.status}) - removido da Equipe ${member.teamId}\n`;
+                });
+                
+                // Criar modal de confirmação personalizado
+                showUpdateResults(message, removedMembers.length);
+            } else {
+                showNotification('Nenhuma atualização necessária. Todas as equipes já estão corretas!', 'info');
+            }
+        }
+        
+        // Mostrar resultados da atualização
+        function showUpdateResults(message, count) {
+            // Criar modal personalizado
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-96 overflow-y-auto">
+                    <div class="flex items-center mb-4">
+                        <div class="flex-shrink-0">
+                            <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-lg font-bold text-gray-900">Equipes Atualizadas</h3>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-3">
+                            ${count} colaborador${count > 1 ? 'es foram removidos' : ' foi removido'} das equipes por não estarem disponíveis:
+                        </p>
+                        <div class="bg-gray-50 rounded-md p-3 text-sm">
+                            ${message.split('\n\n')[1].split('\n').map(line => 
+                                line.trim() ? `<div class="mb-1">${line}</div>` : ''
+                            ).join('')}
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button class="close-update-modal px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                            Entendi
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Fechar modal
+            modal.querySelector('.close-update-modal').addEventListener('click', () => {
+                document.body.removeChild(modal);
+            });
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    document.body.removeChild(modal);
+                }
+            });
+        }
+        
+        // Gerar arquivo TXT estruturado
+        function generateTxtReport() {
+            try {
+                let txtContent = '';
+                
+                // Cabeçalho
+                txtContent += '='.repeat(80) + '\n';
+                txtContent += 'RELATÓRIO DE EQUIPES - SISTEMA DE GESTÃO\n';
+                txtContent += `Data de Geração: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}\n`;
+                txtContent += '='.repeat(80) + '\n\n';
+            
+            // Estatísticas Gerais
+            txtContent += 'ESTATÍSTICAS GERAIS\n';
+            txtContent += '-'.repeat(40) + '\n';
+            txtContent += `Total de Equipes: ${Object.keys(teams).length}\n`;
+            txtContent += `Equipes Completas: ${Object.values(teams).filter(team => team.members.length === 2).length}\n`;
+            txtContent += `Equipes Incompletas: ${Object.values(teams).filter(team => team.members.length < 2).length}\n`;
+            txtContent += `Colaboradores Ativos: ${allMembers.length}\n`;
+            txtContent += `Total de Grupos: 5\n\n`;
+            
+            // Resumo por Grupo
+            txtContent += 'RESUMO POR GRUPO\n';
+            txtContent += '-'.repeat(40) + '\n';
+            const groups = ['A', 'B', 'C', 'D', 'E'];
+            groups.forEach(group => {
+                const groupTeams = Object.values(teams).filter(team => team.group === group);
+                const groupMembers = groupTeams.reduce((total, team) => total + team.members.length, 0);
+                const completeTeams = groupTeams.filter(team => team.members.length === 2).length;
+                
+                txtContent += `Grupo ${group}: ${groupTeams.length} equipes | ${completeTeams} completas | ${groupMembers} colaboradores\n`;
+            });
+            txtContent += '\n';
+            
+            // DADOS PARA EXCEL (formato separado por TAB)
+            txtContent += '='.repeat(80) + '\n';
+            txtContent += 'DADOS ESTRUTURADOS PARA EXCEL\n';
+            txtContent += 'Copie cada seção abaixo e cole no Excel\n';
+            txtContent += '='.repeat(80) + '\n\n';
+            
+            // 1. EQUIPES DETALHADAS
+            txtContent += '1. EQUIPES DETALHADAS (Cole no Excel - Separado por TAB)\n';
+            txtContent += '-'.repeat(60) + '\n';
+            txtContent += 'Equipe\tGrupo\tStatus\tColaborador 1\tMatrícula 1\tStatus 1\tColaborador 2\tMatrícula 2\tStatus 2\n';
+            
+            const allTeams = Object.values(teams).sort((a, b) => a.id.localeCompare(b.id));
+            allTeams.forEach(team => {
+                const member1 = team.members[0] || null;
+                const member2 = team.members[1] || null;
+                const teamStatus = team.members.length === 2 ? 'COMPLETA' : 'INCOMPLETA';
+                
+                txtContent += `${team.id}\t${team.group}\t${teamStatus}\t`;
+                txtContent += `${member1 ? member1.name : 'VAGA DISPONÍVEL'}\t`;
+                txtContent += `${member1 ? member1.registration : ''}\t`;
+                txtContent += `${member1 ? getStatusLabel(member1.status) : ''}\t`;
+                txtContent += `${member2 ? member2.name : 'VAGA DISPONÍVEL'}\t`;
+                txtContent += `${member2 ? member2.registration : ''}\t`;
+                txtContent += `${member2 ? getStatusLabel(member2.status) : ''}\n`;
+            });
+            txtContent += '\n';
+            
+            // 2. COLABORADORES
+            txtContent += '2. LISTA DE COLABORADORES (Cole no Excel - Separado por TAB)\n';
+            txtContent += '-'.repeat(60) + '\n';
+            txtContent += 'Nome\tMatrícula\tStatus\tEquipe\tGrupo\n';
+            
+            const sortedMembers = [...allMembers].sort((a, b) => a.name.localeCompare(b.name));
+            sortedMembers.forEach(member => {
+                const team = teams[member.teamId];
+                txtContent += `${member.name}\t${member.registration}\t${getStatusLabel(member.status)}\t`;
+                txtContent += `${member.teamId || 'Sem equipe'}\t${team ? team.group : 'N/A'}\n`;
+            });
+            txtContent += '\n';
+            
+            // 3. RESUMO POR GRUPO (formato tabela)
+            txtContent += '3. RESUMO POR GRUPO (Cole no Excel - Separado por TAB)\n';
+            txtContent += '-'.repeat(60) + '\n';
+            txtContent += 'Grupo\tTotal Equipes\tEquipes Completas\tColaboradores\t% Completas\n';
+            
+            groups.forEach(group => {
+                const groupTeams = Object.values(teams).filter(team => team.group === group);
+                const groupMembers = groupTeams.reduce((total, team) => total + team.members.length, 0);
+                const completeTeams = groupTeams.filter(team => team.members.length === 2).length;
+                const completePercentage = ((completeTeams / groupTeams.length) * 100).toFixed(1);
+                
+                txtContent += `Grupo ${group}\t${groupTeams.length}\t${completeTeams}\t${groupMembers}\t${completePercentage}%\n`;
+            });
+            txtContent += '\n';
+            
+            // 4. ESTATÍSTICAS POR STATUS
+            txtContent += '4. DISTRIBUIÇÃO POR STATUS (Cole no Excel - Separado por TAB)\n';
+            txtContent += '-'.repeat(60) + '\n';
+            txtContent += 'Status\tQuantidade\tPercentual\n';
+            
+            const statusCount = {};
+            allMembers.forEach(member => {
+                const status = getStatusLabel(member.status);
+                statusCount[status] = (statusCount[status] || 0) + 1;
+            });
+            
+            Object.entries(statusCount).forEach(([status, count]) => {
+                const percentage = ((count / allMembers.length) * 100).toFixed(1);
+                txtContent += `${status}\t${count}\t${percentage}%\n`;
+            });
+            txtContent += '\n';
+            
+            // Detalhamento por Grupo
+            txtContent += '='.repeat(80) + '\n';
+            txtContent += 'DETALHAMENTO POR GRUPO\n';
+            txtContent += '='.repeat(80) + '\n\n';
+            
+            groups.forEach(group => {
+                const groupTeams = Object.values(teams)
+                    .filter(team => team.group === group)
+                    .sort((a, b) => a.id.localeCompare(b.id));
+                
+                txtContent += `GRUPO ${group}\n`;
+                txtContent += '-'.repeat(40) + '\n';
+                txtContent += `Total de Equipes: ${groupTeams.length}\n`;
+                txtContent += `Equipes Completas: ${groupTeams.filter(team => team.members.length === 2).length}\n\n`;
+                
+                groupTeams.forEach(team => {
+                    const status = team.members.length === 2 ? '[COMPLETA]' : '[INCOMPLETA]';
+                    txtContent += `Equipe ${team.id} ${status}\n`;
+                    
+                    if (team.members.length > 0) {
+                        team.members.forEach((member, index) => {
+                            const statusInfo = member.status !== 'disponivel' ? ` (${getStatusLabel(member.status)})` : '';
+                            txtContent += `  ${index + 1}. ${member.name} - Mat: ${member.registration}${statusInfo}\n`;
+                        });
+                    } else {
+                        txtContent += '  (Sem colaboradores)\n';
+                    }
+                    
+                    if (team.members.length < 2) {
+                        const vagas = 2 - team.members.length;
+                        txtContent += `  ${vagas} vaga${vagas > 1 ? 's' : ''} disponível${vagas > 1 ? 'eis' : ''}\n`;
+                    }
+                    txtContent += '\n';
+                });
+                txtContent += '\n';
+            });
+            
+            // Instruções finais
+            txtContent += '='.repeat(80) + '\n';
+            txtContent += 'INSTRUÇÕES PARA USO NO EXCEL\n';
+            txtContent += '='.repeat(80) + '\n';
+            txtContent += '1. Copie cada seção "DADOS ESTRUTURADOS PARA EXCEL" separadamente\n';
+            txtContent += '2. Cole no Excel usando Ctrl+V\n';
+            txtContent += '3. Use "Dados > Texto para Colunas" se necessário\n';
+            txtContent += '4. Escolha "Delimitado" e marque "Tabulação"\n';
+            txtContent += '5. Formate as colunas conforme necessário\n\n';
+            txtContent += 'Arquivo gerado automaticamente pelo Sistema de Gestão de Equipes\n';
+            
+                // Criar e baixar arquivo
+                const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+                const fileName = `relatorio_equipes_${new Date().toISOString().split('T')[0]}.txt`;
+                
+                // Criar link de download
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = fileName;
+                a.style.display = 'none';
+                
+                // Forçar download
+                document.body.appendChild(a);
+                a.click();
+                
+                // Limpar
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(a.href);
+                }, 100);
+                
+                showNotification('Arquivo TXT baixado com sucesso!', 'success');
+                
+            } catch (error) {
+                console.error('Erro ao gerar TXT:', error);
+                showNotification('Erro ao gerar arquivo TXT. Tente novamente.', 'error');
+            }
+        }
+        
+        // Exportar para Excel
+        function exportToExcel() {
+            try {
+                // Verificar se a biblioteca XLSX está carregada
+                if (typeof XLSX === 'undefined') {
+                    showNotification('Biblioteca Excel não carregada. Recarregue a página e tente novamente.', 'error');
+                    return;
+                }
+                
+                // Criar workbook
+                const wb = XLSX.utils.book_new();
+                
+                // 1. ABA RESUMO GERAL
+                const resumoData = [
+                    ['RELATÓRIO DE EQUIPES - SISTEMA DE GESTÃO'],
+                    [`Data de Geração: ${new Date().toLocaleDateString('pt-BR')}`],
+                    [''],
+                    ['ESTATÍSTICAS GERAIS'],
+                    ['Total de Equipes', Object.keys(teams).length],
+                    ['Equipes Completas', Object.values(teams).filter(team => team.members.length === 2).length],
+                    ['Equipes Incompletas', Object.values(teams).filter(team => team.members.length < 2).length],
+                    ['Colaboradores Ativos', allMembers.length],
+                    ['Total de Grupos', 5],
+                    [''],
+                    ['RESUMO POR GRUPO'],
+                    ['Grupo', 'Total Equipes', 'Equipes Completas', 'Colaboradores']
+                ];
+                
+                const groups = ['A', 'B', 'C', 'D', 'E'];
+                groups.forEach(group => {
+                    const groupTeams = Object.values(teams).filter(team => team.group === group);
+                    const groupMembers = groupTeams.reduce((total, team) => total + team.members.length, 0);
+                    const completeTeams = groupTeams.filter(team => team.members.length === 2).length;
+                    
+                    resumoData.push([
+                        `Grupo ${group}`,
+                        groupTeams.length,
+                        completeTeams,
+                        groupMembers
+                    ]);
+                });
+                
+                const wsResumo = XLSX.utils.aoa_to_sheet(resumoData);
+                XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo Geral');
+                
+                // 2. ABA EQUIPES DETALHADAS
+                const equipesData = [
+                    ['Equipe', 'Supervisor', 'Status', 'Colaborador 1', 'Matrícula 1', 'Status 1', 'Colaborador 2', 'Matrícula 2', 'Status 2']
+                ];
+                
+                // Ordenar todas as equipes por ID
+                const allTeams = Object.values(teams).sort((a, b) => a.id.localeCompare(b.id));
+                
+                allTeams.forEach(team => {
+                    const member1 = team.members[0] || null;
+                    const member2 = team.members[1] || null;
+                    const teamStatus = team.members.length === 2 ? 'COMPLETA' : 'INCOMPLETA';
+                    
+                    equipesData.push([
+                        team.id,
+                        team.group,
+                        teamStatus,
+                        member1 ? member1.name : 'VAGA DISPONÍVEL',
+                        member1 ? member1.registration : '',
+                        member1 ? getStatusLabel(member1.status) : '',
+                        member2 ? member2.name : 'VAGA DISPONÍVEL',
+                        member2 ? member2.registration : '',
+                        member2 ? getStatusLabel(member2.status) : ''
+                    ]);
+                });
+                
+                const wsEquipes = XLSX.utils.aoa_to_sheet(equipesData);
+                XLSX.utils.book_append_sheet(wb, wsEquipes, 'Equipes Detalhadas');
+                
+                // 3. ABA COLABORADORES
+                const colaboradoresData = [
+                    ['Nome', 'Matrícula', 'Status', 'Equipe', 'Grupo']
+                ];
+                
+                // Ordenar colaboradores por nome
+                const sortedMembers = [...allMembers].sort((a, b) => a.name.localeCompare(b.name));
+                
+                sortedMembers.forEach(member => {
+                    const team = teams[member.teamId];
+                    colaboradoresData.push([
+                        member.name,
+                        member.registration,
+                        getStatusLabel(member.status),
+                        member.teamId || 'Sem equipe',
+                        team ? team.group : 'N/A'
+                    ]);
+                });
+                
+                const wsColaboradores = XLSX.utils.aoa_to_sheet(colaboradoresData);
+                XLSX.utils.book_append_sheet(wb, wsColaboradores, 'Colaboradores');
+                
+                // 4. ABA POR GRUPO (uma aba para cada grupo)
+                groups.forEach(group => {
+                    const groupTeams = Object.values(teams)
+                        .filter(team => team.group === group)
+                        .sort((a, b) => a.id.localeCompare(b.id));
+                    
+                    const groupData = [
+                        [`GRUPO ${group}`],
+                        [`Total de Equipes: ${groupTeams.length}`],
+                        [`Equipes Completas: ${groupTeams.filter(team => team.members.length === 2).length}`],
+                        [''],
+                        ['Equipe', 'Status', 'Colaborador 1', 'Matrícula 1', 'Status 1', 'Colaborador 2', 'Matrícula 2', 'Status 2']
+                    ];
+                    
+                    groupTeams.forEach(team => {
+                        const member1 = team.members[0] || null;
+                        const member2 = team.members[1] || null;
+                        const teamStatus = team.members.length === 2 ? 'COMPLETA' : 'INCOMPLETA';
+                        
+                        groupData.push([
+                            team.id,
+                            teamStatus,
+                            member1 ? member1.name : 'VAGA DISPONÍVEL',
+                            member1 ? member1.registration : '',
+                            member1 ? getStatusLabel(member1.status) : '',
+                            member2 ? member2.name : 'VAGA DISPONÍVEL',
+                            member2 ? member2.registration : '',
+                            member2 ? getStatusLabel(member2.status) : ''
+                        ]);
+                    });
+                    
+                    const wsGroup = XLSX.utils.aoa_to_sheet(groupData);
+                    XLSX.utils.book_append_sheet(wb, wsGroup, `Grupo ${group}`);
+                });
+                
+                // 5. ABA ESTATÍSTICAS AVANÇADAS
+                const statsData = [
+                    ['ESTATÍSTICAS AVANÇADAS'],
+                    [''],
+                    ['DISTRIBUIÇÃO POR STATUS'],
+                    ['Status', 'Quantidade', 'Percentual']
+                ];
+                
+                const statusCount = {};
+                allMembers.forEach(member => {
+                    const status = getStatusLabel(member.status);
+                    statusCount[status] = (statusCount[status] || 0) + 1;
+                });
+                
+                Object.entries(statusCount).forEach(([status, count]) => {
+                    const percentage = ((count / allMembers.length) * 100).toFixed(1);
+                    statsData.push([status, count, `${percentage}%`]);
+                });
+                
+                statsData.push(['']);
+                statsData.push(['DISTRIBUIÇÃO POR GRUPO']);
+                statsData.push(['Grupo', 'Colaboradores', 'Percentual', 'Equipes Completas', '% Completas']);
+                
+                groups.forEach(group => {
+                    const groupTeams = Object.values(teams).filter(team => team.group === group);
+                    const groupMembers = groupTeams.reduce((total, team) => total + team.members.length, 0);
+                    const completeTeams = groupTeams.filter(team => team.members.length === 2).length;
+                    const memberPercentage = ((groupMembers / allMembers.length) * 100).toFixed(1);
+                    const completePercentage = ((completeTeams / groupTeams.length) * 100).toFixed(1);
+                    
+                    statsData.push([
+                        `Grupo ${group}`,
+                        groupMembers,
+                        `${memberPercentage}%`,
+                        completeTeams,
+                        `${completePercentage}%`
+                    ]);
+                });
+                
+                const wsStats = XLSX.utils.aoa_to_sheet(statsData);
+                XLSX.utils.book_append_sheet(wb, wsStats, 'Estatísticas');
+                
+                // Gerar arquivo Excel como blob
+                const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                
+                // Criar link de download
+                const fileName = `relatorio_equipes_${new Date().toISOString().split('T')[0]}.xlsx`;
+                
+                // Criar elemento de download
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = fileName;
+                a.style.display = 'none';
+                
+                // Forçar download
+                document.body.appendChild(a);
+                a.click();
+                
+                // Limpar
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(a.href);
+                }, 100);
+                
+                showNotification('Arquivo Excel baixado com sucesso!', 'success');
+                
+            } catch (error) {
+                console.error('Erro ao exportar:', error);
+                showNotification(`Erro ao gerar arquivo Excel: ${error.message}`, 'error');
+            }
+        }
+        
+
+        
+        // Buscar colaboradores disponíveis
+        function searchAvailableCollaborators(query) {
+            if (!query || query.length < 2) {
+                document.getElementById('searchResults').classList.add('hidden');
+                selectedCollaborator = null;
+                updateAddButton();
+                return;
+            }
+            
+            const searchTerm = query.toLowerCase();
+            const availableMembers = allMembers.filter(member => 
+                member.status === 'disponivel' && 
+                !member.teamId && // Apenas colaboradores sem equipe
+                (member.name.toLowerCase().includes(searchTerm) || 
+                 member.registration.includes(searchTerm))
+            );
+            
+            const resultsContainer = document.getElementById('searchResultsList');
+            const searchResults = document.getElementById('searchResults');
+            
+            if (availableMembers.length === 0) {
+                resultsContainer.innerHTML = '<p class="text-sm text-gray-500 italic">Nenhum colaborador disponível encontrado</p>';
+                searchResults.classList.remove('hidden');
+                selectedCollaborator = null;
+            } else {
+                resultsContainer.innerHTML = availableMembers.map(member => `
+                    <div class="collaborator-result flex items-center justify-between p-3 bg-white rounded-md border border-gray-200 hover:border-blue-300 cursor-pointer transition-colors"
+                         data-member-id="${member.id}">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-medium text-gray-900">${member.name}</p>
+                                <p class="text-sm text-gray-500">Mat: ${member.registration}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                Disponível
+                            </span>
+                            <button class="select-collaborator text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                    data-member-id="${member.id}">
+                                Selecionar
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+                searchResults.classList.remove('hidden');
+            }
+            
+            updateAddButton();
+        }
+        
+        // Selecionar colaborador
+        function selectCollaborator(memberId) {
+            const member = allMembers.find(m => m.id === memberId);
+            if (!member) return;
+            
+            selectedCollaborator = member;
+            
+            // Destacar colaborador selecionado
+            document.querySelectorAll('.collaborator-result').forEach(result => {
+                result.classList.remove('border-blue-500', 'bg-blue-50');
+                if (result.dataset.memberId === memberId) {
+                    result.classList.add('border-blue-500', 'bg-blue-50');
+                }
+            });
+            
+            // Atualizar campo de busca
+            document.getElementById('collaboratorSearch').value = `${member.name} (${member.registration})`;
+            
+            updateAddButton();
+        }
+        
+        // Popular equipes disponíveis
+        function populateAvailableTeams() {
+            const select = document.getElementById('targetTeam');
+            select.innerHTML = '<option value="">Selecione uma equipe...</option>';
+            
+            // Filtrar equipes com vagas disponíveis
+            const availableTeams = Object.values(teams)
+                .filter(team => team.members.length < 2)
+                .sort((a, b) => a.id.localeCompare(b.id));
+            
+            availableTeams.forEach(team => {
+                const vacancies = 2 - team.members.length;
+                select.innerHTML += `<option value="${team.id}">Equipe ${team.id} - Grupo ${team.group} (${vacancies} vaga${vacancies > 1 ? 's' : ''})</option>`;
+            });
+        }
+        
+        // Mostrar informações da equipe selecionada
+        function showTeamInfo(teamId) {
+            if (!teamId) {
+                document.getElementById('teamInfo').classList.add('hidden');
+                selectedTargetTeam = null;
+                updateAddButton();
+                return;
+            }
+            
+            const team = teams[teamId];
+            if (!team) return;
+            
+            selectedTargetTeam = team;
+            
+            const teamInfoContent = document.getElementById('teamInfoContent');
+            const vacancies = 2 - team.members.length;
+            
+            teamInfoContent.innerHTML = `
+                <div class="flex items-center justify-between mb-3">
+                    <h5 class="font-semibold text-gray-900">Equipe ${team.id} - Grupo ${team.group}</h5>
+                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        team.members.length === 2 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    }">
+                        ${team.members.length === 2 ? 'Completa' : `${vacancies} vaga${vacancies > 1 ? 's' : ''}`}
+                    </span>
+                </div>
+                
+                <div class="space-y-2">
+                    <h6 class="text-sm font-medium text-gray-700">Membros Atuais:</h6>
+                    ${team.members.length > 0 ? 
+                        team.members.map((member, index) => `
+                            <div class="flex items-center space-x-2 text-sm">
+                                <span class="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center text-xs font-medium text-blue-600">
+                                    ${index + 1}
+                                </span>
+                                <span class="text-gray-900">${member.name}</span>
+                                <span class="text-gray-500">(${member.registration})</span>
+                                ${member.status !== 'disponivel' ? 
+                                    `<span class="text-xs text-red-600">⚠️ ${getStatusLabel(member.status)}</span>` : ''
+                                }
+                            </div>
+                        `).join('') : 
+                        '<p class="text-sm text-gray-500 italic">Nenhum membro ainda</p>'
+                    }
+                </div>
+            `;
+            
+            document.getElementById('teamInfo').classList.remove('hidden');
+            updateAddButton();
+        }
+        
+        // Atualizar estado do botão adicionar
+        function updateAddButton() {
+            const addBtn = document.getElementById('addToTeamBtn');
+            const canAdd = selectedCollaborator && selectedTargetTeam;
+            
+            addBtn.disabled = !canAdd;
+            
+            if (canAdd) {
+                addBtn.textContent = `Adicionar ${selectedCollaborator.name.split(' ')[0]} à Equipe ${selectedTargetTeam.id}`;
+            } else {
+                addBtn.textContent = 'Adicionar à Equipe';
+            }
+        }
+        
+        // Adicionar colaborador à equipe manualmente
+        function addCollaboratorToTeam() {
+            if (!selectedCollaborator || !selectedTargetTeam) {
+                showNotification('Selecione um colaborador e uma equipe', 'error');
+                return;
+            }
+            
+            // Verificar se o colaborador ainda está disponível
+            const member = allMembers.find(m => m.id === selectedCollaborator.id);
+            if (!member || member.status !== 'disponivel' || member.teamId) {
+                showNotification('Colaborador não está mais disponível', 'error');
+                resetAddMemberForm();
+                return;
+            }
+            
+            // Verificar se a equipe ainda tem vaga
+            const team = teams[selectedTargetTeam.id];
+            if (!team || team.members.length >= 2) {
+                showNotification('Equipe não tem mais vagas disponíveis', 'error');
+                resetAddMemberForm();
+                return;
+            }
+            
+            // Adicionar colaborador à equipe
+            member.teamId = selectedTargetTeam.id;
+            team.members.push(member);
+            
+            // Mostrar sucesso
+            showNotification(`${member.name} foi adicionado à Equipe ${team.id} com sucesso!`, 'success');
+            
+            // Resetar formulário
+            resetAddMemberForm();
+            
+            // Atualizar visualizações
+            const currentFilter = document.getElementById('groupFilter').value;
+            renderTeams(currentFilter);
+        }
+        
+        // Resetar formulário de adicionar colaborador
+        function resetAddMemberForm() {
+            selectedCollaborator = null;
+            selectedTargetTeam = null;
+            
+            document.getElementById('collaboratorSearch').value = '';
+            document.getElementById('targetTeam').value = '';
+            document.getElementById('searchResults').classList.add('hidden');
+            document.getElementById('teamInfo').classList.add('hidden');
+            
+            populateAvailableTeams();
+            updateAddButton();
+        }
+        
+        // Toggle seção de adicionar colaborador
+        function toggleAddMemberSection() {
+            const section = document.getElementById('addMemberSection');
+            const toggleBtn = document.getElementById('toggleAddMember');
+            
+            if (section.classList.contains('hidden')) {
+                section.classList.remove('hidden');
+                toggleBtn.textContent = 'Ocultar';
+                populateAvailableTeams();
+            } else {
+                section.classList.add('hidden');
+                toggleBtn.textContent = 'Mostrar';
+                resetAddMemberForm();
+            }
+        }
+        
+        // Mostrar notificação
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg text-white z-50 transition-all duration-300 ${
+                type === 'success' ? 'bg-green-600' : 
+                type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+            }`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Remover após 3 segundos
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        document.body.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
+        
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            generateInitialData();
+            renderTeams();
+            setupDragAndDrop();
+            
+            // Navegação entre visualizações
+            document.getElementById('teamsViewBtn').addEventListener('click', () => switchView('teams'));
+            document.getElementById('membersViewBtn').addEventListener('click', () => switchView('members'));
+            
+            // Atualização de equipes
+            document.getElementById('updateTeamsBtn').addEventListener('click', updateTeamsBasedOnStatus);
+            
+            // Exportação para Excel
+            document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
+            
+            // Geração de arquivo TXT
+            document.getElementById('exportTxtBtn').addEventListener('click', generateTxtReport);
+            
+            // Filtro por grupo (visualização de equipes)
+            document.getElementById('groupFilter').addEventListener('change', (e) => {
+                renderTeams(e.target.value);
+            });
+            
+            // Busca de colaborador (visualização de equipes)
+            document.getElementById('searchMember').addEventListener('input', (e) => {
+                searchMember(e.target.value);
+            });
+            
+            // Sistema de busca inline nas equipes
+            document.addEventListener('input', (e) => {
+                if (e.target.classList.contains('team-search-input')) {
+                    const teamId = e.target.dataset.teamId;
+                    const query = e.target.value;
+                    searchCollaboratorsForTeam(query, teamId);
+                }
+            });
+            
+            // Ocultar resultados quando clicar fora
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.empty-slot')) {
+                    document.querySelectorAll('.team-search-results').forEach(results => {
+                        results.classList.add('hidden');
+                    });
+                }
+            });
+            
+            // Busca e filtros (visualização de colaboradores)
+            document.getElementById('memberSearch').addEventListener('input', (e) => {
+                const teamFilter = document.getElementById('teamFilter').value;
+                renderMembersTable(e.target.value, teamFilter);
+            });
+            
+            document.getElementById('teamFilter').addEventListener('change', (e) => {
+                const searchTerm = document.getElementById('memberSearch').value;
+                renderMembersTable(searchTerm, e.target.value);
+            });
+            
+            // Sub-abas de colaboradores
+            document.getElementById('availableTab').addEventListener('click', () => switchMemberTab('available'));
+            document.getElementById('unavailableTab').addEventListener('click', () => switchMemberTab('unavailable'));
+            document.getElementById('allMembersTab').addEventListener('click', () => switchMemberTab('all'));
+            
+            // Modal de colaborador
+            document.getElementById('addMemberBtn').addEventListener('click', () => openModal());
+            document.getElementById('closeModal').addEventListener('click', closeModal);
+            document.getElementById('cancelBtn').addEventListener('click', closeModal);
+            
+            // Formulário de colaborador
+            document.getElementById('memberForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                
+                if (saveMember(formData)) {
+                    closeModal();
+                    if (currentView === 'members') {
+                        renderMembersTable();
+                    } else {
+                        const currentFilter = document.getElementById('groupFilter').value;
+                        renderTeams(currentFilter);
+                    }
+                }
+            });
+            
+            // Fechar modal ao clicar fora
+            document.getElementById('memberModal').addEventListener('click', (e) => {
+                if (e.target.id === 'memberModal') {
+                    closeModal();
+                }
+            });
+            
+            // Remover colaborador (visualização de equipes)
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('remove-member')) {
+                    const memberId = e.target.dataset.memberId;
+                    const teamId = e.target.dataset.teamId;
+                    removeMember(memberId, teamId);
+                }
+                
+                // Editar colaborador (visualização de colaboradores)
+                if (e.target.classList.contains('edit-member')) {
+                    const memberId = e.target.dataset.memberId;
+                    const member = allMembers.find(m => m.id === memberId);
+                    if (member) {
+                        openModal(member);
+                    }
+                }
+                
+                // Excluir colaborador (visualização de colaboradores)
+                if (e.target.classList.contains('delete-member')) {
+                    const memberId = e.target.dataset.memberId;
+                    deleteMember(memberId);
+                }
+                
+                // Adicionar colaborador via busca inline
+                if (e.target.classList.contains('add-to-team-btn')) {
+                    const memberId = e.target.dataset.memberId;
+                    const teamId = e.target.dataset.teamId;
+                    addCollaboratorToTeamInline(memberId, teamId);
+                }
+            });
+        });
+    </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9975811c35fa9ad4',t:'MTc2MTkzODM3MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
